@@ -1,7 +1,7 @@
 (defpackage :crm-system
   (:use :cl :cl-who :hunchentoot :clsql))
 
-
+(in-package :crm-system)
 
 ;; You must set these variables to appropriate values.
 (defvar *crm-database-type* :odbc
@@ -41,9 +41,8 @@
    (clsql:connect `(,strdb)
                   :database-type strdbtype)))
 
-  (clsql:start-sql-recording)))
-
-
+  (clsql:start-sql-recording)
+  (clsql:enable-sql-reader-syntax)))
 
 
 
@@ -134,6 +133,28 @@
    (address
     :type (string 512)
     :initarg :address)
+
+ (created-by
+    :TYPE INTEGER
+    :INITARG :created-by)
+   (user-created-by
+    :ACCESSOR company-created-by
+    :DB-KIND :JOIN
+    :DB-INFO (:JOIN-CLASS crm-users
+                          :HOME-KEY created-by
+                          :FOREIGN-KEY row-id
+                          :SET NIL))
+   (updated-by
+    :TYPE INTEGER
+    :INITARG :updated-by)
+   (user-updated-by
+    :ACCESSOR company-updated-by
+    :DB-KIND :JOIN
+    :DB-INFO (:JOIN-CLASS crm-users
+                          :HOME-KEY updated-by
+                          :FOREIGN-KEY row-id
+                          :SET NIL))
+  
    (employees
     :reader company-employees
     :db-kind :join
@@ -147,8 +168,7 @@
 
 
 
-(defun create-company (company-instance)
-  (clsql:create-view-from-class company-instance))
+
 
 (defvar *companies* '())
 
@@ -170,7 +190,7 @@
 			  :href "./crm-system.css"))
 		  (:body 
 		   (:div :id "header" ; CRM System header
-			 (:img :src "crm.jpg" 
+			 (:img :src "crm-logo.jpg" 
 			       :alt "CRM" 
 			       :class "logo")
 			 (:span :class "strapline" 
@@ -181,48 +201,91 @@
 
 (defun crm-controller-index () 
 	 (standard-page (:title "Welcome to CRM World")
-			(:h1 "CRM World")
+			(:h1 "CRM World") 
 			(:p "Want to create a new company?" (:a :href "/new-company" "here"))
-			(:h2 "Current stand")
-			(:div :id "chart" ; For CSS styling of links
-			      (:ol
-			       (dolist (company (companies))
-				 (htm  
-				  (:li 
-				   (:a :href (format nil "vote?name=~a" (name company)) "Vote!")
-				   (fmt "~A with ~d votes" (name company) (address company game)))))))))
+			))
 
+(setq *logged-in-users* (make-hash-table :test 'equal))
+
+(defun crm-login (company-name username password)
+  (let ((login-user (car (clsql:select 'crm-users :where [and
+				   [= [slot-value 'crm-users 'username] username]
+				   [= [slot-value 'crm-users 'password] password]
+				   [= [slot-value 'crm-users 'tenant-id] (get-tenant-id company-name )]]
+				   :flatp t))))
+       (if (equalp (slot-value login-user `username) NIL) NIL (add-login-user username  login-user))))
+
+
+(defun get-tenant-id (company-name)
+    ( car ( clsql:select [row-id] :from [crm-company] :where [= [slot-value 'crm-company 'name] company-name]
+				    :flatp t)))
+
+      
+(defun get-login-user (username)
+  (gethash username *logged-in-users*))
+
+
+(defun is-user-already-login? (username)
+ ( get-login-user username))
+
+
+(defun add-login-user(username object)
+  (unless (is-user-already-login? username)
+	   (setf (gethash username *logged-in-users*) object)))
+
+
+(defun crm-logout (username)
+  (remhash username *logged-in-users*))
 
 
 
 (defun crm-controller-new-company ()
- 	 (standard-page (:title "Add a new company")
-			(:h1 "Add a new company")
+  (standard-page (:title "Add a new company")
+		 (:h1 "Add a new company")
 			(:form :action "/company-added" :method "post" 
 			       (:p "What is the name of the company?" (:br)
 				   (:input :type "text"  
 					   :name "name" 
-					   :class "txt"))
+					   :class "txt")
+				   (:input :type "text"  
+					   :name "address" 
+					   :class "txt")
+
+				   )
 			       (:p (:input :type "submit" 
 					   :value "Add" 
 					   :class "btn")))))
 
 
 
+(defun create-company (company-instance)
+  (clsql:create-view-from-class company-instance))
 
 
-(defun controller-company-added ()
-  (let  ((name (parameter "name")))
-  (unless ( or (null name) (zerop (length name)))
-    (add-game name))
-  (redirect "/index")))
+(defun new-crm-company(cname caddress)
+  (let  ((company-name cname)(company-address caddress))
+    (clsql:update-records-from-instance (make-instance 'crm-company
+				    :name company-name
+				    :address company-address
+				    :created-by 1
+				    :updated-by 1))))
+
+(defun crm-controller-company-added ()
+  (let  ((cname (hunchentoot:parameter "name"))
+	 (caddress (hunchentoot:parameter "address")))
+    
+    (unless(and  ( or (null cname) (zerop (length cname)))
+		 ( or (null caddress) (zerop (length caddress))))
+    (new-crm-company cname caddress))
+  (hunchentoot:redirect "/crmindex")))
 
 
 (setq hunchentoot:*dispatch-table*
       (list
-       (create-regex-dispatcher "^/crmindex" 'crm-controller-index)
-       (create-regex-dispatcher "^/company-added" 'crm-controller-company-added)
-       (create-regex-dispatcher "^/new-company" 'crm-controller-new-company)))
+       (hunchentoot:create-regex-dispatcher "^/crmindex" 'crm-controller-index)
+       (hunchentoot:create-regex-dispatcher "^/company-added" 'crm-controller-company-added)
+       (hunchentoot:create-regex-dispatcher "^/new-company" 'crm-controller-new-company)))
+
 
 
 
@@ -261,12 +324,20 @@
 
 
 
-(defvar TestAdmin1 (car (clsql:select 'crm-users :where [= [slot-value 'crm-users 'username] "TestAdmin1"]
-				:flatp t)))
+;(defvar TestAdmin1 (car (clsql:select 'crm-users :where [and [= [slot-value 'crm-users 'username] "TestAdmin1"]
+;[= slot-value 'crm-users 'password] "P@ssword1"]]
+;				:flatp t)))
 
 
-(defvar TestCompany1 (car (clsql:select 'crm-company :where [= [slot-value 'crm-company 'name] "TestCompany"]
-				:flatp t)))
+;;(defvar TestCompany1 (car (clsql:select 'crm-company :where [= [slot-value 'crm-company 'name] "TestCompany"]
+;;				:flatp t)))
+
+
+
+
+
+
+
 
 
 
@@ -283,6 +354,4 @@
 
 
 
-;; lets use the functional sql interface
-(clsql:locally-enable-sql-reader-syntax)
 
