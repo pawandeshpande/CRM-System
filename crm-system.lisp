@@ -1,4 +1,3 @@
-
 (defpackage :crm-system
   (:use :cl :cl-who :hunchentoot :clsql))
 
@@ -42,12 +41,14 @@
    (clsql:connect `(,strdb)
                   :database-type strdbtype)))
 
-  (clsql:start-sql-recording)
-;; lets use the functional sql interface
-(clsql:locally-enable-sql-reader-syntax)))
+  (clsql:start-sql-recording)))
 
-;; Connect to the database.
-(crm-db-connect :strdb *crm-database-name* :strusr *crm-database-user* :strpwd *crm-database-password* :strdbtype *crm-database-type*)
+
+
+
+
+
+
 
 
 (clsql:def-view-class crm-users ()
@@ -219,9 +220,22 @@
 
 (setq hunchentoot:*dispatch-table*
       (list
-       (hunchentoot:create-regex-dispatcher "^/crmindex" 'crm-controller-index)
-       (hunchentoot:create-regex-dispatcher "^/company-added" 'crm-controller-company-added)
-       (hunchentoot:create-regex-dispatcher "^/new-company" 'crm-controller-new-company)))
+       (create-regex-dispatcher "^/crmindex" 'crm-controller-index)
+       (create-regex-dispatcher "^/company-added" 'crm-controller-company-added)
+       (create-regex-dispatcher "^/new-company" 'crm-controller-new-company)))
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 (clsql:def-view-class crm-account ()
   ((row-id
@@ -269,4 +283,6 @@
 
 
 
+;; lets use the functional sql interface
+(clsql:locally-enable-sql-reader-syntax)
 
