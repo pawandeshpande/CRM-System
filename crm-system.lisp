@@ -16,7 +16,7 @@
 (defvar *crm-database-password* "TestCRMCore"
   "The password if required")
 
-
+(defvar *logged-in-users* nil)
 
 
 ;; Connect to the database (see the CLSQL documentation for vendor
@@ -43,8 +43,6 @@
 
   (clsql:start-sql-recording)
   (clsql:enable-sql-reader-syntax)))
-
-
 
 
 
