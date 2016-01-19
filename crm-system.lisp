@@ -4,6 +4,10 @@
 (in-package :crm-system)
 (clsql:file-enable-sql-reader-syntax)
 
+(setf (hunchentoot:acceptor-access-log-destination *http-server* ) #p"~/hunchentoot-access.log")
+
+(setf (hunchentoot:acceptor-message-log-destination *http-server*) #p"~/hunchentoot-messages.log")
+
 ;; You must set these variables to appropriate values.
 (defvar *crm-database-type* :odbc
   "Possible values are :postgresql :postgresql-socket, :mysql,
@@ -60,11 +64,10 @@
 			  :href "./crm-system.css"))
 		  (:body 
 		   (:div :id "header" ; CRM System header
-			 (:img :src "crm-logo.jpg" 
+			 (:img :src "./crm-system/resources/crm-logo.png" 
 			       :alt "CRM" 
-			       :class "logo")
-			 (:span :class "strapline" 
-				"Welcome to CRM System"))
+			       :class "logo"))
+			 
 		   ,@body))))
 
 
@@ -73,6 +76,9 @@
 	 (standard-page (:title "Welcome to CRM World")
 			(:h1 "CRM World") 
 			(:p "Want to create a new company?" (:a :href "/new-company" "here"))
+			(:p "Want to create a new user?" (:a :href "/new-user" "here"))
+			(:p "Want to create a new account?" (:a :href "/new-account" "here"))
+			
 			
 	 (:a :href "/crmlogout" "Logout")))
 
@@ -97,7 +103,7 @@
 					   :name "password" 
 					   :class "password"))
 			       (:p (:input :type "submit" 
-					   :value "Add" 
+					   :value "Login" 
 					   :class "btn")))))
 
 
@@ -110,12 +116,13 @@
 	     ( or (null cname) (zerop (length cname)))
 	     ( or (null uname) (zerop (length uname)))
 		 ( or (null passwd) (zerop (length passwd))))
-       (if (equal (crm-login :company-name cname :username uname :password passwd) NIL) (hunchentoot:redirect "/loginpage") (hunchentoot:redirect "/crmindex")))))
+       (if (equal (crm-login :company-name cname :username uname :password passwd) NIL) (hunchentoot:redirect "/login") (hunchentoot:redirect "/crmindex")))))
 
   
    (defun crm-controller-logout ()
      (progn (crm-logout (get-current-login-user))
-			(hunchentoot:acceptor-remove-session 'hunchentoot:easy-acceptor 'hunchentoot:*session*)))
+	    (hunchentoot:acceptor-remove-session *http-server* *current-user-session*)
+	    (hunchentoot:redirect "/login")))
 
 
 (defun get-current-login-user ()
@@ -129,7 +136,8 @@
 				   [= [slot-value 'crm-users 'password] password]
 				   [= [slot-value 'crm-users 'tenant-id] (get-tenant-id company-name )]]
 				   :flatp t))))
-    (if (equalp (slot-value login-user 'username) NIL) NIL (progn (add-login-user username  login-user)
+
+    (if (null login-user) NIL  (progn (add-login-user username  login-user)
     (setf *current-user-session* (hunchentoot:start-session))
     (setf (hunchentoot:session-value :login-username) username)))))
 
@@ -139,7 +147,7 @@
 				    :flatp t)))
 
       
-(defun get-login-user (username)
+(defun get-login-user-object (username)
   (gethash username *logged-in-users*))
 
 
@@ -193,7 +201,7 @@
        (hunchentoot:create-regex-dispatcher "^/crmindex" 'crm-controller-index)
        (hunchentoot:create-regex-dispatcher "^/company-added" 'crm-controller-company-added)
        (hunchentoot:create-regex-dispatcher "^/new-company" 'crm-controller-new-company)
-       (hunchentoot:create-regex-dispatcher "^/loginpage" 'crm-controller-loginpage)
+       (hunchentoot:create-regex-dispatcher "^/login" 'crm-controller-loginpage)
        (hunchentoot:create-regex-dispatcher "^/crmlogin" 'crm-controller-login)
        (hunchentoot:create-regex-dispatcher "^/crmlogout" 'crm-controller-logout)))
 

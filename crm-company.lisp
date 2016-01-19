@@ -53,5 +53,5 @@
     (clsql:update-records-from-instance (make-instance 'crm-company
 				    :name company-name
 				    :address company-address
-				    :created-by 1
-				    :updated-by 1))))
+				    :created-by (slot-value  (get-login-user-object (get-current-login-user)) 'tenant-id)
+				    :updated-by (slot-value  (get-login-user-object (get-current-login-user)) 'tenant-id)))))
