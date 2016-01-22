@@ -1,54 +1,23 @@
-(defpackage :crm-system
-  (:use :cl :cl-who :hunchentoot :clsql))
+
 
 (in-package :crm-system)
 (clsql:file-enable-sql-reader-syntax)
 
-(setf (hunchentoot:acceptor-access-log-destination *http-server* ) #p"~/hunchentoot-access.log")
-
-(setf (hunchentoot:acceptor-message-log-destination *http-server*) #p"~/hunchentoot-messages.log")
-
-;; You must set these variables to appropriate values.
-(defvar *crm-database-type* :odbc
-  "Possible values are :postgresql :postgresql-socket, :mysql,
-:oracle, :odbc, :aodbc or :sqlite")
-(defvar *crm-database-name* "TestCRMCore"
-  "The name of the database we will work in.")
-(defvar *crm-database-user* "TestCRMCore"
-  "The name of the database user we will work as.")
-(defvar *crm-database-server* "localhost"
-  "The name of the database server if required")
-(defvar *crm-database-password* "TestCRMCore"
-  "The password if required")
 
 (defvar *logged-in-users* nil)
 (defvar *current-user-session* nil)
 
 
-;; Connect to the database (see the CLSQL documentation for vendor
-;; specific connection specs).
-
-(defun crm-db-connect(&key strdb strusr strpwd servername strdbtype)
-
-(progn 
-  (case strdbtype
-  ((:mysql :postgresql :postgresql-socket)
-   (clsql:connect `(,servername
-                    ,strdb
-                    ,strusr
-                    ,strpwd)
-                  :database-type strdbtype))
-  ((:odbc :aodbc :oracle)
-   (clsql:connect `(,strdb
-                    ,strusr
-                    ,strpwd)
-                  :database-type strdbtype))
-  (:sqlite
-   (clsql:connect `(,strdb)
-                  :database-type strdbtype)))
-
-  (clsql:start-sql-recording)
-  (clsql:enable-sql-reader-syntax)))
+(defun copy-hash-table (hash-table)
+  (let ((ht (make-hash-table 
+             :test (hash-table-test hash-table)
+             :rehash-size (hash-table-rehash-size hash-table)
+             :rehash-threshold (hash-table-rehash-threshold hash-table)
+             :size (hash-table-size hash-table))))
+    (loop for key being each hash-key of hash-table
+       using (hash-value value)
+       do (setf (gethash key ht) value)
+       finally (return ht))))
 
 (defmacro standard-page ((&key title) &body body)
 	 `(cl-who:with-html-output-to-string (*standard-output* nil :prologue t :indent t)
@@ -66,21 +35,26 @@
 		   (:div :id "header" ; CRM System header
 			 (:img :src "./crm-system/resources/crm-logo.png" 
 			       :alt "CRM" 
-			       :class "logo"))
-			 
+			       :class "logo")
+			 (:h3 (:span :class "strapline"  "Welcome  " (str (get-current-login-user))
+				     )))
+					 
 		   ,@body))))
 
 
 
+
+
+
 (defun crm-controller-index () 
-	 (standard-page (:title "Welcome to CRM World")
-			(:h1 "CRM World") 
+(if (is-crm-session-valid?)
+  (standard-page (:title "Welcome to CRM World")
+			
 			(:p "Want to create a new company?" (:a :href "/new-company" "here"))
 			(:p "Want to create a new user?" (:a :href "/new-user" "here"))
 			(:p "Want to create a new account?" (:a :href "/new-account" "here"))
-			
-			
-	 (:a :href "/crmlogout" "Logout")))
+			(:a :href "/crmlogout" "Logout"))
+  (hunchentoot:redirect "/login")))
 
 (setq *logged-in-users* (make-hash-table :test 'equal))
 
@@ -116,18 +90,24 @@
 	     ( or (null cname) (zerop (length cname)))
 	     ( or (null uname) (zerop (length uname)))
 		 ( or (null passwd) (zerop (length passwd))))
-       (if (equal (crm-login :company-name cname :username uname :password passwd) NIL) (hunchentoot:redirect "/login") (hunchentoot:redirect "/crmindex")))))
+       (if (equal (crm-login :company-name cname :username uname :password passwd) NIL) (hunchentoot:redirect "/login") (hunchentoot:redirect  "/crmindex")))))
 
   
    (defun crm-controller-logout ()
+     (if (is-crm-session-valid?)
      (progn (crm-logout (get-current-login-user))
-	    (hunchentoot:acceptor-remove-session *http-server* *current-user-session*)
-	    (hunchentoot:redirect "/login")))
+	    (hunchentoot:remove-session *current-user-session*)
+	    (hunchentoot:redirect "/login"))))
 
 
 (defun get-current-login-user ()
-  (hunchentoot:session-value :username))
+  (hunchentoot:session-value :login-username))
 
+(defun get-current-login-company ()
+ ( hunchentoot:session-value :login-company))
+
+(defun is-crm-session-valid? ()
+ (if  (null (get-current-login-user)) NIL T))
 
 
 (defun crm-login (&key company-name username password)
@@ -139,7 +119,8 @@
 
     (if (null login-user) NIL  (progn (add-login-user username  login-user)
     (setf *current-user-session* (hunchentoot:start-session))
-    (setf (hunchentoot:session-value :login-username) username)))))
+    (setf (hunchentoot:session-value :login-username) username)
+    (setf (hunchentoot:session-value :login-company) company-name)))))
 
 
 (defun get-tenant-id (company-name)
@@ -152,7 +133,7 @@
 
 
 (defun is-user-already-login? (username)
- ( get-login-user username))
+(if (equal (gethash username *logged-in-users*) NIL ) NIL T))
 
 
 (defun add-login-user(username object)
@@ -166,6 +147,7 @@
 
 
 (defun crm-controller-new-company ()
+(if (is-crm-session-valid?)
   (standard-page (:title "Add a new company")
 		 (:h1 "Add a new company")
 			(:form :action "/company-added" :method "post" 
@@ -180,20 +162,23 @@
 				   )
 			       (:p (:input :type "submit" 
 					   :value "Add" 
-					   :class "btn")))))
+					   :class "btn"))))
+  (hunchentoot:redirect "/login")))
 
 
 
 
 
 (defun crm-controller-company-added ()
+(if (is-crm-session-valid?)
   (let  ((cname (hunchentoot:parameter "name"))
 	 (caddress (hunchentoot:parameter "address")))
     
     (unless(and  ( or (null cname) (zerop (length cname)))
 		 ( or (null caddress) (zerop (length caddress))))
     (new-crm-company cname caddress))
-  (hunchentoot:redirect "/crmindex")))
+    (hunchentoot:redirect  "/crmindex"))
+  (hunchentoot:redirect "/login")))
 
 
 (setq hunchentoot:*dispatch-table*

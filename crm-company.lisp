@@ -1,4 +1,4 @@
-
+(in-package :crm-system)
 (clsql:def-view-class crm-company ()
   ((row-id
     :db-kind :key
@@ -43,15 +43,14 @@
   (:base-table crm_company))
 
 
-(defvar *companies* '())
-
-(defun companies ()
-  (sort (copy-list  *companies*) #'> :key #'name)) 
-
 (defun new-crm-company(cname caddress)
   (let  ((company-name cname)(company-address caddress))
+    (if ( is-crm-session-valid?)
+	;; if session is valid then go ahead and create the company
     (clsql:update-records-from-instance (make-instance 'crm-company
 				    :name company-name
 				    :address company-address
 				    :created-by (slot-value  (get-login-user-object (get-current-login-user)) 'tenant-id)
-				    :updated-by (slot-value  (get-login-user-object (get-current-login-user)) 'tenant-id)))))
+				    :updated-by (slot-value  (get-login-user-object (get-current-login-user)) 'tenant-id)))
+     ;; else redirect to the login page
+    (hunchentoot:redirect "/login"))))

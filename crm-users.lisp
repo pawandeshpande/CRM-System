@@ -1,4 +1,4 @@
-
+(in-package :crm-system)
 (clsql:def-view-class crm-users ()
   ((row-id
     :db-kind :key
