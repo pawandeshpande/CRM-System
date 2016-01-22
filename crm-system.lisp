@@ -1,178 +1,23 @@
-(defpackage :crm-system
-  (:use :cl :cl-who :hunchentoot :clsql))
+
 
 (in-package :crm-system)
+(clsql:file-enable-sql-reader-syntax)
 
-;; You must set these variables to appropriate values.
-(defvar *crm-database-type* :odbc
-  "Possible values are :postgresql :postgresql-socket, :mysql,
-:oracle, :odbc, :aodbc or :sqlite")
-(defvar *crm-database-name* "TestCRMCore"
-  "The name of the database we will work in.")
-(defvar *crm-database-user* "TestCRMCore"
-  "The name of the database user we will work as.")
-(defvar *crm-database-server* "localhost"
-  "The name of the database server if required")
-(defvar *crm-database-password* "TestCRMCore"
-  "The password if required")
 
 (defvar *logged-in-users* nil)
+(defvar *current-user-session* nil)
 
 
-;; Connect to the database (see the CLSQL documentation for vendor
-;; specific connection specs).
-
-(defun crm-db-connect(&key strdb strusr strpwd servername strdbtype)
-
-(progn 
-  (case strdbtype
-  ((:mysql :postgresql :postgresql-socket)
-   (clsql:connect `(,servername
-                    ,strdb
-                    ,strusr
-                    ,strpwd)
-                  :database-type strdbtype))
-  ((:odbc :aodbc :oracle)
-   (clsql:connect `(,strdb
-                    ,strusr
-                    ,strpwd)
-                  :database-type strdbtype))
-  (:sqlite
-   (clsql:connect `(,strdb)
-                  :database-type strdbtype)))
-
-  (clsql:start-sql-recording)
-  (clsql:enable-sql-reader-syntax)))
-
-
-
-
-
-(clsql:def-view-class crm-users ()
-  ((row-id
-    :db-kind :key
-    :db-constraints :not-null
-    :type integer
-    :initarg row-id)
-   (NAME
-    :accessor name
-    :DB-CONSTRAINTS :NOT-NULL
-    :TYPE (string 30)
-    :INITARG :name)
-   (username
-    :ACCESSOR username 
-    :type (string 30)
-    :initarg :username)
-   (password
-    :accessor password
-    :type (string 30)
-    :initarg :password)
-   (email
-    :accessor email
-    :type (string 255)
-    :initarg :email)
-   (created-by
-    :TYPE INTEGER
-    :INITARG :created-by)
-   (user-created-by
-    :ACCESSOR user-created-by
-    :DB-KIND :JOIN
-    :DB-INFO (:JOIN-CLASS crm-users
-                          :HOME-KEY created-by
-                          :FOREIGN-KEY row-id
-                          :SET NIL))
-   (updated-by
-    :TYPE INTEGER
-    :INITARG :updated-by)
-   (user-updated-by
-    :ACCESSOR user-updated-by
-    :DB-KIND :JOIN
-    :DB-INFO (:JOIN-CLASS crm-users
-                          :HOME-KEY updated-by
-                          :FOREIGN-KEY row-id
-                          :SET NIL))
-   (tenant-id
-    :type integer
-    :initarg :tenant-id)
-   (COMPANY
-    :ACCESSOR users-company
-    :DB-KIND :JOIN
-    :DB-INFO (:JOIN-CLASS crm-company
-	                  :HOME-KEY tenant-id
-                          :FOREIGN-KEY row-id
-                          :SET NIL))
-
-   
-   (parent-id
-    :type integer
-    :initarg :parent-id)
-   (manager
-    :accessor users-manager
-    :db-kind :join
-    :db-info (:join-class crm_users
-                          :home-key parent-id
-                          :foreign-key row-id
-                          :set nil)))
-
-   
-  (:BASE-TABLE crm_users))
-
-
-
-(clsql:def-view-class crm-company ()
-  ((row-id
-    :db-kind :key
-    :db-constraints :not-null
-    :type integer
-    :initarg :row-id)
-   (name
-    :type (string 255)
-    :initarg :name)
-   (address
-    :type (string 512)
-    :initarg :address)
-
- (created-by
-    :TYPE INTEGER
-    :INITARG :created-by)
-   (user-created-by
-    :ACCESSOR company-created-by
-    :DB-KIND :JOIN
-    :DB-INFO (:JOIN-CLASS crm-users
-                          :HOME-KEY created-by
-                          :FOREIGN-KEY row-id
-                          :SET NIL))
-   (updated-by
-    :TYPE INTEGER
-    :INITARG :updated-by)
-   (user-updated-by
-    :ACCESSOR company-updated-by
-    :DB-KIND :JOIN
-    :DB-INFO (:JOIN-CLASS crm-users
-                          :HOME-KEY updated-by
-                          :FOREIGN-KEY row-id
-                          :SET NIL))
-  
-   (employees
-    :reader company-employees
-    :db-kind :join
-    :db-info (:join-class crm-users
-                          :home-key row-id
-                          :foreign-key tenant-id
-                          :set t)))
-  (:base-table crm_company))
-
-
-
-
-
-
-
-(defvar *companies* '())
-
-(defun companies ()
-  (sort (copy-list  *companies*) #'> :key #'name)) 
-
+(defun copy-hash-table (hash-table)
+  (let ((ht (make-hash-table 
+             :test (hash-table-test hash-table)
+             :rehash-size (hash-table-rehash-size hash-table)
+             :rehash-threshold (hash-table-rehash-threshold hash-table)
+             :size (hash-table-size hash-table))))
+    (loop for key being each hash-key of hash-table
+       using (hash-value value)
+       do (setf (gethash key ht) value)
+       finally (return ht))))
 
 (defmacro standard-page ((&key title) &body body)
 	 `(cl-who:with-html-output-to-string (*standard-output* nil :prologue t :indent t)
@@ -188,30 +33,94 @@
 			  :href "./crm-system.css"))
 		  (:body 
 		   (:div :id "header" ; CRM System header
-			 (:img :src "crm-logo.jpg" 
+			 (:img :src "./crm-system/resources/crm-logo.png" 
 			       :alt "CRM" 
 			       :class "logo")
-			 (:span :class "strapline" 
-				"Welcome to CRM System"))
+			 (:h3 (:span :class "strapline"  "Welcome  " (str (get-current-login-user))
+				     )))
+					 
 		   ,@body))))
 
 
 
+
+
+
 (defun crm-controller-index () 
-	 (standard-page (:title "Welcome to CRM World")
-			(:h1 "CRM World") 
+(if (is-crm-session-valid?)
+  (standard-page (:title "Welcome to CRM World")
+			
 			(:p "Want to create a new company?" (:a :href "/new-company" "here"))
-			))
+			(:p "Want to create a new user?" (:a :href "/new-user" "here"))
+			(:p "Want to create a new account?" (:a :href "/new-account" "here"))
+			(:a :href "/crmlogout" "Logout"))
+  (hunchentoot:redirect "/login")))
 
 (setq *logged-in-users* (make-hash-table :test 'equal))
 
-(defun crm-login (company-name username password)
+
+(defun crm-controller-loginpage ()
+   (standard-page (:title "Welcome to CRM System")
+		 (:h1 "Login to CRM System")
+			(:form :action "/crmlogin" :method "post" 
+			       (:p "Company" (:br)
+				   (:input :type "text"  
+					   :name "company" 
+					   :class "txt"))
+			      
+			       (:p "Username" (:br)
+				   (:input :type "text"  
+					   :name "username" 
+					   :class "txt"))
+			       (:p "Password" (:br)
+				   (:input :type "password"  
+					   :name "password" 
+					   :class "password"))
+			       (:p (:input :type "submit" 
+					   :value "Login" 
+					   :class "btn")))))
+
+
+(defun crm-controller-login ()
+   (let  ((uname (hunchentoot:parameter "username"))
+	  (passwd (hunchentoot:parameter "password"))
+	  (cname (hunchentoot:parameter "company")))
+    
+     (unless(and
+	     ( or (null cname) (zerop (length cname)))
+	     ( or (null uname) (zerop (length uname)))
+		 ( or (null passwd) (zerop (length passwd))))
+       (if (equal (crm-login :company-name cname :username uname :password passwd) NIL) (hunchentoot:redirect "/login") (hunchentoot:redirect  "/crmindex")))))
+
+  
+   (defun crm-controller-logout ()
+     (if (is-crm-session-valid?)
+     (progn (crm-logout (get-current-login-user))
+	    (hunchentoot:remove-session *current-user-session*)
+	    (hunchentoot:redirect "/login"))))
+
+
+(defun get-current-login-user ()
+  (hunchentoot:session-value :login-username))
+
+(defun get-current-login-company ()
+ ( hunchentoot:session-value :login-company))
+
+(defun is-crm-session-valid? ()
+ (if  (null (get-current-login-user)) NIL T))
+
+
+(defun crm-login (&key company-name username password)
   (let ((login-user (car (clsql:select 'crm-users :where [and
 				   [= [slot-value 'crm-users 'username] username]
 				   [= [slot-value 'crm-users 'password] password]
 				   [= [slot-value 'crm-users 'tenant-id] (get-tenant-id company-name )]]
 				   :flatp t))))
-       (if (equalp (slot-value login-user `username) NIL) NIL (add-login-user username  login-user))))
+
+    (if (null login-user) NIL  (progn (add-login-user username  login-user)
+    (setf *current-user-session* (hunchentoot:start-session))
+    (setf (hunchentoot:session-value :login-username) username)
+    (setf (hunchentoot:session-value :login-company) company-name)))))
 
 
 (defun get-tenant-id (company-name)
@@ -219,12 +128,12 @@
 				    :flatp t)))
 
       
-(defun get-login-user (username)
+(defun get-login-user-object (username)
   (gethash username *logged-in-users*))
 
 
 (defun is-user-already-login? (username)
- ( get-login-user username))
+(if (equal (gethash username *logged-in-users*) NIL ) NIL T))
 
 
 (defun add-login-user(username object)
@@ -238,6 +147,7 @@
 
 
 (defun crm-controller-new-company ()
+(if (is-crm-session-valid?)
   (standard-page (:title "Add a new company")
 		 (:h1 "Add a new company")
 			(:form :action "/company-added" :method "post" 
@@ -252,59 +162,34 @@
 				   )
 			       (:p (:input :type "submit" 
 					   :value "Add" 
-					   :class "btn")))))
+					   :class "btn"))))
+  (hunchentoot:redirect "/login")))
 
 
 
-(defun create-company (company-instance)
-  (clsql:create-view-from-class company-instance))
 
-
-(defun new-crm-company(cname caddress)
-  (let  ((company-name cname)(company-address caddress))
-    (clsql:update-records-from-instance (make-instance 'crm-company
-				    :name company-name
-				    :address company-address
-				    :created-by 1
-				    :updated-by 1))))
 
 (defun crm-controller-company-added ()
+(if (is-crm-session-valid?)
   (let  ((cname (hunchentoot:parameter "name"))
 	 (caddress (hunchentoot:parameter "address")))
     
     (unless(and  ( or (null cname) (zerop (length cname)))
 		 ( or (null caddress) (zerop (length caddress))))
     (new-crm-company cname caddress))
-  (hunchentoot:redirect "/crmindex")))
+    (hunchentoot:redirect  "/crmindex"))
+  (hunchentoot:redirect "/login")))
 
 
 (setq hunchentoot:*dispatch-table*
       (list
        (hunchentoot:create-regex-dispatcher "^/crmindex" 'crm-controller-index)
        (hunchentoot:create-regex-dispatcher "^/company-added" 'crm-controller-company-added)
-       (hunchentoot:create-regex-dispatcher "^/new-company" 'crm-controller-new-company)))
+       (hunchentoot:create-regex-dispatcher "^/new-company" 'crm-controller-new-company)
+       (hunchentoot:create-regex-dispatcher "^/login" 'crm-controller-loginpage)
+       (hunchentoot:create-regex-dispatcher "^/crmlogin" 'crm-controller-login)
+       (hunchentoot:create-regex-dispatcher "^/crmlogout" 'crm-controller-logout)))
 
-
-(clsql:def-view-class crm-account ()
-  ((row-id
-    :db-kind :key
-    :db-constraints :not-null
-    :type integer
-    :initarg :row-id)
-   (account-no
-    :type (string 10)
-    :db-constraints :not-null
-    :initarg :account-no)
-   (account-name
-    :type (string 30)
-    :db-constraints :not-null
-    :initarg :name)
-   (account-description
-    :type (string 100)
-    :initarg :description)
-   
-   )
-(:base-table crm_account))
 
 
 
