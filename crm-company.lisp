@@ -50,7 +50,11 @@
     (clsql:update-records-from-instance (make-instance 'crm-company
 				    :name company-name
 				    :address company-address
-				    :created-by (slot-value  (get-login-user-object (get-current-login-user)) 'tenant-id)
-				    :updated-by (slot-value  (get-login-user-object (get-current-login-user)) 'tenant-id)))
+				    :created-by (get-login-tenant-id)
+				    :updated-by (get-login-tenant-id)))
      ;; else redirect to the login page
     (hunchentoot:redirect "/login"))))
+
+
+(defun get-login-tenant-id ()
+  (slot-value  (get-login-user-object (get-current-login-user)) 'tenant-id))

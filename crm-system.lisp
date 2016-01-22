@@ -151,21 +151,63 @@
   (standard-page (:title "Add a new company")
 		 (:h1 "Add a new company")
 			(:form :action "/company-added" :method "post" 
-			       (:p "What is the name of the company?" (:br)
+			       (:p "Name: " 
 				   (:input :type "text"  
 					   :name "name" 
-					   :class "txt")
-				   (:input :type "text"  
+					   :class "txt"))
+			       (:p "Address: " (:input :type "textarea"  
 					   :name "address" 
-					   :class "txt")
+					   :class "txtarea"))
 
-				   )
+				   
 			       (:p (:input :type "submit" 
 					   :value "Add" 
 					   :class "btn"))))
   (hunchentoot:redirect "/login")))
 
 
+(defun crm-controller-new-user ()
+(if (is-crm-session-valid?)
+  (standard-page (:title "Add a new User")
+		 (:h1 "Add a new User")
+			(:form :action "/user-added" :method "post" 
+			       (:p "Name: "
+				   (:input :type "text"  
+					   :name "name" 
+					   :class "txt")
+				  (:p "Username: " (:input :type "text"  
+					   :name "username" 
+					   :class "txt"))
+				  (:p "Password: " (:input :type "password"  
+					   :name "password" 
+					   :class "password"))
+				  (:p "Email: " (:input :type "text"  
+					   :name "email" 
+					   :class "txt"))
+
+				  ;; Add a drop down list of available roles for the user.
+				  
+				  
+			       (:p (:input :type "submit" 
+					   :value "Add" 
+					   :class "btn")))))
+  (hunchentoot:redirect "/login")))
+
+
+(defun crm-controller-user-added ()
+(if (is-crm-session-valid?)
+  (let  ((name (hunchentoot:parameter "name"))
+	 (username (hunchentoot:parameter "username"))
+	 (password (hunchentoot:parameter "password"))
+	 (email (hunchentoot:parameter "email")))
+    
+    (unless (and  ( or (null name) (zerop (length name)))
+		 ( or (null username) (zerop (length username)))
+		 ( or (null password) (zerop (length password)))
+		 ( or (null email) (zerop (length email))))		
+    (new-crm-user name username password email))
+    (hunchentoot:redirect  "/crmindex"))
+  (hunchentoot:redirect "/login")))
 
 
 
@@ -188,6 +230,8 @@
        (hunchentoot:create-regex-dispatcher "^/new-company" 'crm-controller-new-company)
        (hunchentoot:create-regex-dispatcher "^/login" 'crm-controller-loginpage)
        (hunchentoot:create-regex-dispatcher "^/crmlogin" 'crm-controller-login)
+       (hunchentoot:create-regex-dispatcher "^/new-user" 'crm-controller-new-user)
+       (hunchentoot:create-regex-dispatcher "^/user-added" 'crm-controller-user-added)
        (hunchentoot:create-regex-dispatcher "^/crmlogout" 'crm-controller-logout)))
 
 

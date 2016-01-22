@@ -71,3 +71,19 @@
 
 
 
+(defun new-crm-user(name uname passwd email-address )
+ (if ( is-crm-session-valid?)
+	;; if session is valid then go ahead and create the company
+    (clsql:update-records-from-instance (make-instance 'crm-users
+				    :name name
+				    :username uname
+				    :password passwd
+				    :email email-address
+				    :created-by (slot-value  (get-login-user-object (get-current-login-user)) 'tenant-id)
+				    :updated-by (slot-value  (get-login-user-object (get-current-login-user)) 'tenant-id)))
+     ;; else redirect to the login page
+    (hunchentoot:redirect "/login")))
+
+(defun get-crm-roles ()
+ ())
+
