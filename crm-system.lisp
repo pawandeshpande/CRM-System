@@ -20,26 +20,27 @@
        finally (return ht))))
 
 (defmacro standard-page ((&key title) &body body)
-	 `(cl-who:with-html-output-to-string (*standard-output* nil :prologue t :indent t)
-	   (:html :xmlns "http://www.w3.org/1999/xhtml"
-		  :xml\:lang "en" 
-		  :lang "en"
-		  (:head 
-		   (:meta :http-equiv "Content-Type" 
-			  :content    "text/html;charset=utf-8")
-		   (:title ,title)
-		   (:link :type "text/css" 
-			  :rel "stylesheet"
-			  :href "./crm-system.css"))
-		  (:body 
-		   (:div :id "header" ; CRM System header
-			 (:img :src "./crm-system/resources/crm-logo.png" 
-			       :alt "CRM" 
-			       :class "logo")
-			 (:h3 (:span :class "strapline"  "Welcome  " (str (get-current-login-user))
-				     )))
+  `(cl-who:with-html-output-to-string (*standard-output* nil :prologue t :indent t)
+     (:html :xmlns "http://www.w3.org/1999/xhtml"
+	    :xml\:lang "en" 
+	    :lang "en"
+	    (:head 
+	     (:meta :http-equiv "Content-Type" 
+		    :content    "text/html;charset=utf-8")
+	     (:title ,title)
+	     (:link :type "text/css" 
+		    :rel "stylesheet"
+		    :href "./crm-system.css"))
+	    (:body :align "center"
+	     (:div :id "header"		; CRM System header
+		   (:img :src "./resources/crm-logo.png" 
+			 :alt "CRM" 
+			 :class "logo")
+		    (:h3 (:span :class "strapline"  "Welcome  " (str (get-current-login-user))
+				)))
+	     (:p (:hr))
 					 
-		   ,@body))))
+	     ,@body))))
 
 
 
@@ -47,50 +48,47 @@
 
 
 (defun crm-controller-index () 
-(if (is-crm-session-valid?)
-  (standard-page (:title "Welcome to CRM World")
-			
-			(:p "Want to create a new company?" (:a :href "/new-company" "here"))
-			(:p "Want to create a new user?" (:a :href "/new-user" "here"))
-			(:p "Want to create a new account?" (:a :href "/new-account" "here"))
-			(:a :href "/crmlogout" "Logout"))
-  (hunchentoot:redirect "/login")))
-
+  (if (is-crm-session-valid?)
+      (standard-page (:title "Welcome to CRM World")
+	(:p "Want to create a new company?" (:a :href "/new-company" "here"))
+	(:p "Want to create a new user?" (:a :href "/new-user" "here"))
+	(:p "Want to create a new account?" (:a :href "/new-account" "here"))
+	(:a :href "/crmlogout" "Logout"))
+      (hunchentoot:redirect "/login")))
 (setq *logged-in-users* (make-hash-table :test 'equal))
 
 
 (defun crm-controller-loginpage ()
-   (standard-page (:title "Welcome to CRM System")
-		 (:h1 "Login to CRM System")
-			(:form :action "/crmlogin" :method "post" 
-			       (:p "Company" (:br)
-				   (:input :type "text"  
-					   :name "company" 
-					   :class "txt"))
-			      
-			       (:p "Username" (:br)
-				   (:input :type "text"  
-					   :name "username" 
-					   :class "txt"))
-			       (:p "Password" (:br)
-				   (:input :type "password"  
-					   :name "password" 
-					   :class "password"))
-			       (:p (:input :type "submit" 
-					   :value "Login" 
-					   :class "btn")))))
+  (standard-page (:title "Welcome to CRM System")
+    (:h1 "Login to CRM System")
+    (:form :action "/crmlogin" :method "post" 
+	   (:p "Company" (:br)
+	       (:input :type "text"  
+		       :name "company" 
+		       :class "txt"))
+	   (:p "Username" (:br)
+	       (:input :type "text"  
+		       :name "username" 
+		       :class "txt"))
+	   (:p "Password" (:br)
+	       (:input :type "password"  
+		       :name "password" 
+		       :class "password"))
+	   (:p (:input :type "submit" 
+		       :value "Login" 
+		       :class "btn")))))
 
 
 (defun crm-controller-login ()
-   (let  ((uname (hunchentoot:parameter "username"))
-	  (passwd (hunchentoot:parameter "password"))
-	  (cname (hunchentoot:parameter "company")))
+  (let  ((uname (hunchentoot:parameter "username"))
+	 (passwd (hunchentoot:parameter "password"))
+	 (cname (hunchentoot:parameter "company")))
     
-     (unless(and
-	     ( or (null cname) (zerop (length cname)))
-	     ( or (null uname) (zerop (length uname)))
-		 ( or (null passwd) (zerop (length passwd))))
-       (if (equal (crm-login :company-name cname :username uname :password passwd) NIL) (hunchentoot:redirect "/login") (hunchentoot:redirect  "/crmindex")))))
+    (unless(and
+	    ( or (null cname) (zerop (length cname)))
+	    ( or (null uname) (zerop (length uname)))
+	    ( or (null passwd) (zerop (length passwd))))
+      (if (equal (crm-login :company-name cname :username uname :password passwd) NIL) (hunchentoot:redirect "/login") (hunchentoot:redirect  "/crmindex")))))
 
   
    (defun crm-controller-logout ()
@@ -112,20 +110,20 @@
 
 (defun crm-login (&key company-name username password)
   (let ((login-user (car (clsql:select 'crm-users :where [and
-				   [= [slot-value 'crm-users 'username] username]
-				   [= [slot-value 'crm-users 'password] password]
-				   [= [slot-value 'crm-users 'tenant-id] (get-tenant-id company-name )]]
-				   :flatp t))))
+				       [= [slot-value 'crm-users 'username] username]
+				       [= [slot-value 'crm-users 'password] password]
+				       [= [slot-value 'crm-users 'tenant-id] (get-tenant-id company-name )]]
+				       :flatp t))))
 
     (if (null login-user) NIL  (progn (add-login-user username  login-user)
-    (setf *current-user-session* (hunchentoot:start-session))
-    (setf (hunchentoot:session-value :login-username) username)
-    (setf (hunchentoot:session-value :login-company) company-name)))))
+				      (setf *current-user-session* (hunchentoot:start-session))
+				      (setf (hunchentoot:session-value :login-username) username)
+				      (setf (hunchentoot:session-value :login-company) company-name)))))
 
 
 (defun get-tenant-id (company-name)
-    ( car ( clsql:select [row-id] :from [crm-company] :where [= [slot-value 'crm-company 'name] company-name]
-				    :flatp t)))
+  ( car ( clsql:select [row-id] :from [crm-company] :where [= [slot-value 'crm-company 'name] company-name]
+		       :flatp t)))
 
       
 (defun get-login-user-object (username)
@@ -147,80 +145,80 @@
 
 
 (defun crm-controller-new-company ()
-(if (is-crm-session-valid?)
-  (standard-page (:title "Add a new company")
-		 (:h1 "Add a new company")
-			(:form :action "/company-added" :method "post" 
-			       (:p "Name: " 
-				   (:input :type "text"  
-					   :name "name" 
-					   :class "txt"))
-			       (:p "Address: " (:input :type "textarea"  
-					   :name "address" 
-					   :class "txtarea"))
+  (if (is-crm-session-valid?)
+      (standard-page (:title "Add a new company")
+	(:h1 "Add a new company")
+	(:form :action "/company-added" :method "post" 
+	       (:p "Name: " 
+		   (:input :type "text"  
+			   :name "name" 
+			   :class "txt"))
+	       (:p "Address: " (:input :type "textarea"  
+				       :name "address" 
+				       :class "txtarea"))
 
 				   
-			       (:p (:input :type "submit" 
-					   :value "Add" 
-					   :class "btn"))))
-  (hunchentoot:redirect "/login")))
+	       (:p (:input :type "submit" 
+			   :value "Add" 
+			   :class "btn"))))
+      (hunchentoot:redirect "/login")))
 
 
 (defun crm-controller-new-user ()
-(if (is-crm-session-valid?)
-  (standard-page (:title "Add a new User")
-		 (:h1 "Add a new User")
-			(:form :action "/user-added" :method "post" 
-			       (:p "Name: "
-				   (:input :type "text"  
-					   :name "name" 
-					   :class "txt")
-				  (:p "Username: " (:input :type "text"  
-					   :name "username" 
-					   :class "txt"))
-				  (:p "Password: " (:input :type "password"  
-					   :name "password" 
-					   :class "password"))
-				  (:p "Email: " (:input :type "text"  
-					   :name "email" 
-					   :class "txt"))
+  (if (is-crm-session-valid?)
+      (standard-page (:title "Add a new User")
+	(:h1 "Add a new User")
+	(:form :action "/user-added" :method "post" 
+	       (:p "Name: "
+		   (:input :type "text"  
+			   :name "name" 
+			   :class "txt")
+		   (:p "Username: " (:input :type "text"  
+					    :name "username" 
+					    :class "txt"))
+		   (:p "Password: " (:input :type "password"  
+					    :name "password" 
+					    :class "password"))
+		   (:p "Email: " (:input :type "text"  
+					 :name "email" 
+					 :class "txt"))
 
-				  ;; Add a drop down list of available roles for the user.
+		   ;; Add a drop down list of available roles for the user.
 				  
 				  
-			       (:p (:input :type "submit" 
-					   :value "Add" 
-					   :class "btn")))))
-  (hunchentoot:redirect "/login")))
+		   (:p (:input :type "submit" 
+			       :value "Add" 
+			       :class "btn")))))
+      (hunchentoot:redirect "/login")))
 
 
 (defun crm-controller-user-added ()
-(if (is-crm-session-valid?)
-  (let  ((name (hunchentoot:parameter "name"))
-	 (username (hunchentoot:parameter "username"))
-	 (password (hunchentoot:parameter "password"))
-	 (email (hunchentoot:parameter "email")))
+  (if (is-crm-session-valid?)
+      (let  ((name (hunchentoot:parameter "name"))
+	     (username (hunchentoot:parameter "username"))
+	     (password (hunchentoot:parameter "password"))
+	     (email (hunchentoot:parameter "email")))
     
-    (unless (and  ( or (null name) (zerop (length name)))
-		 ( or (null username) (zerop (length username)))
-		 ( or (null password) (zerop (length password)))
-		 ( or (null email) (zerop (length email))))		
-    (new-crm-user name username password email))
-    (hunchentoot:redirect  "/crmindex"))
-  (hunchentoot:redirect "/login")))
+	(unless (and  ( or (null name) (zerop (length name)))
+		      ( or (null username) (zerop (length username)))
+		      ( or (null password) (zerop (length password)))
+		      ( or (null email) (zerop (length email))))		
+	  (new-crm-user name username password email))
+	(hunchentoot:redirect  "/crmindex"))
+      (hunchentoot:redirect "/login")))
 
 
 
 (defun crm-controller-company-added ()
-(if (is-crm-session-valid?)
-  (let  ((cname (hunchentoot:parameter "name"))
-	 (caddress (hunchentoot:parameter "address")))
+  (if (is-crm-session-valid?)
+      (let  ((cname (hunchentoot:parameter "name"))
+	     (caddress (hunchentoot:parameter "address")))
     
-    (unless(and  ( or (null cname) (zerop (length cname)))
-		 ( or (null caddress) (zerop (length caddress))))
-    (new-crm-company cname caddress))
-    (hunchentoot:redirect  "/crmindex"))
-  (hunchentoot:redirect "/login")))
+	(unless(and  ( or (null cname) (zerop (length cname)))
+		     ( or (null caddress) (zerop (length caddress))))
+	  (new-crm-company cname caddress))
+	(hunchentoot:redirect  "/crmindex"))
+      (hunchentoot:redirect "/login")))
 
 
 (setq hunchentoot:*dispatch-table*

@@ -79,6 +79,7 @@
 				    :username uname
 				    :password passwd
 				    :email email-address
+				    :tenant-id (get-tenant-id (get-current-login-company))
 				    :created-by (slot-value  (get-login-user-object (get-current-login-user)) 'tenant-id)
 				    :updated-by (slot-value  (get-login-user-object (get-current-login-user)) 'tenant-id)))
      ;; else redirect to the login page

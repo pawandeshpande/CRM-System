@@ -42,11 +42,16 @@
 
 (defvar *http-server* nil)
 
-(defun start-webserver ()
+(defun start-crm-system () 
   
-  (setf  *http-server* (hunchentoot:start (make-instance 'hunchentoot:easy-acceptor :port 4242 :document-root #p"c:/users/i072746/crm-system")))
+  (setf  *http-server* (hunchentoot:start (make-instance 'hunchentoot:easy-acceptor :port 4242 :document-root #p"~/crm-system/")))
   
 (setf (hunchentoot:acceptor-access-log-destination *http-server* ) #p"~/hunchentoot-access.log")
-(setf (hunchentoot:acceptor-message-log-destination *http-server*) #p"~/hunchentoot-messages.log"))
+(setf (hunchentoot:acceptor-message-log-destination *http-server*) #p"~/hunchentoot-messages.log")
 
+(crm-db-connect :strdb "TestCRMCore" :strusr "TestCRMCore" :strpwd "TestCRMCore" :strdbtype :odbc))
 
+(defun shutdown-crm-system ()
+  (clsql:disconnect)
+  (hunchentoot:stop *http-server*)
+)
