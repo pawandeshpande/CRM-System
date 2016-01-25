@@ -47,14 +47,29 @@
   (let  ((company-name cname)(company-address caddress))
     (if ( is-crm-session-valid?)
 	;; if session is valid then go ahead and create the company
-    (clsql:update-records-from-instance (make-instance 'crm-company
+   (clsql:update-records-from-instance (make-instance 'crm-company
 				    :name company-name
 				    :address company-address
 				    :created-by (get-login-tenant-id)
 				    :updated-by (get-login-tenant-id)))
+
      ;; else redirect to the login page
     (hunchentoot:redirect "/login"))))
 
 
 (defun get-login-tenant-id ()
   (slot-value  (get-login-user-object (get-current-login-user)) 'tenant-id))
+
+
+(defun list-crm-companies ()
+  (clsql:select 'crm-company :flatp t ))
+
+(defun crm-controller-list-companies ()
+(if (is-crm-session-valid?)
+   (let (( companies (list-crm-companies)))
+    (standard-page (:title "List companies")
+      (:table :cellpadding "0" :cellspacing "0" :border "1")
+     (:tr ) (:td :colspan "3" :height "120px"  
+    (loop for company in companies
+	 do (str (slot-value company 'name))))))
+ (hunchentoot:redirect "/login")))

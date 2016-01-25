@@ -50,6 +50,7 @@
 (defun crm-controller-index () 
   (if (is-crm-session-valid?)
       (standard-page (:title "Welcome to CRM World")
+	(:p "List companies?" (:a :href "/list-companies" "here"))
 	(:p "Want to create a new company?" (:a :href "/new-company" "here"))
 	(:p "Want to create a new user?" (:a :href "/new-user" "here"))
 	(:p "Want to create a new account?" (:a :href "/new-account" "here"))
@@ -230,7 +231,8 @@
        (hunchentoot:create-regex-dispatcher "^/crmlogin" 'crm-controller-login)
        (hunchentoot:create-regex-dispatcher "^/new-user" 'crm-controller-new-user)
        (hunchentoot:create-regex-dispatcher "^/user-added" 'crm-controller-user-added)
-       (hunchentoot:create-regex-dispatcher "^/crmlogout" 'crm-controller-logout)))
+       (hunchentoot:create-regex-dispatcher "^/crmlogout" 'crm-controller-logout)
+       (hunchentoot:create-regex-dispatcher "^/list-companies" 'crm-controller-list-companies)))
 
 
 
