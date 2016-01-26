@@ -30,7 +30,7 @@
 	     (:title ,title)
 	     (:link :type "text/css" 
 		    :rel "stylesheet"
-		    :href "./crm-system.css"))
+		    :href "./resources/crm-system.css"))
 	    (:body :align "center"
 	     (:div :id "header"		; CRM System header
 		   (:img :src "./resources/crm-logo.png" 
@@ -44,14 +44,15 @@
 
 
 
-
+(defun verify-superadmin ();;"Verifies whether username is superadmin" 
+  (if (equal (get-current-login-username) "superadmin") T NIL ))
 
 
 (defun crm-controller-index () 
   (if (is-crm-session-valid?)
       (standard-page (:title "Welcome to CRM World")
 	(:p "List companies?" (:a :href "/list-companies" "here"))
-	(:p "Want to create a new company?" (:a :href "/new-company" "here"))
+	(when (verify-superadmin)(htm (:p "Want to create a new company?" (:a :href "/new-company" "here"))))
 	(:p "Want to create a new user?" (:a :href "/new-user" "here"))
 	(:p "Want to create a new account?" (:a :href "/new-account" "here"))
 	(:a :href "/crmlogout" "Logout"))
@@ -99,14 +100,14 @@
 	    (hunchentoot:redirect "/login"))))
 
 
-(defun get-current-login-user ()
+(defun get-current-login-username ()
   (hunchentoot:session-value :login-username))
 
 (defun get-current-login-company ()
  ( hunchentoot:session-value :login-company))
 
 (defun is-crm-session-valid? ()
- (if  (null (get-current-login-user)) NIL T))
+ (if  (null (get-current-login-username)) NIL T))
 
 
 (defun crm-login (&key company-name username password)

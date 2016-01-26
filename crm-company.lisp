@@ -68,8 +68,11 @@
 (if (is-crm-session-valid?)
    (let (( companies (list-crm-companies)))
     (standard-page (:title "List companies")
-      (:table :cellpadding "0" :cellspacing "0" :border "1")
-     (:tr ) (:td :colspan "3" :height "120px"  
+      (:table :cellpadding "0" :cellspacing "0" :border "1"
+    
     (loop for company in companies
-	 do (str (slot-value company 'name))))))
+       do (htm (:tr (:td :colspan "3" :height "12px" (str (slot-value company 'name)))
+			  (:td :colspan "12px" (:a :href (format nil "/Delete-company?id=" (str (slot-value company 'row-id))) "Delete"))))))))
  (hunchentoot:redirect "/login")))
+
+
