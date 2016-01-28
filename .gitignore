@@ -1,6 +1,7 @@
 *.jpg
-*.png
 *.pdf
 *.exe
 *.dll
 *.fasl
+*.lisp~
+*.asd~

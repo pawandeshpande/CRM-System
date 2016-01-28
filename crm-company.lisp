@@ -1,4 +1,5 @@
 (in-package :crm-system)
+(clsql:file-enable-sql-reader-syntax)
 (clsql:def-view-class crm-company ()
   ((row-id
     :db-kind :key
@@ -32,6 +33,10 @@
                           :HOME-KEY updated-by
                           :FOREIGN-KEY row-id
                           :SET NIL))
+   (deleted-state
+    :type (string 1)
+    :void-value "N"
+    :initarg :deleted-state)
   
    (employees
     :reader company-employees
@@ -47,10 +52,60 @@
   (let  ((company-name cname)(company-address caddress))
     (if ( is-crm-session-valid?)
 	;; if session is valid then go ahead and create the company
-    (clsql:update-records-from-instance (make-instance 'crm-company
-				    :name company-name
-				    :address company-address
-				    :created-by (slot-value  (get-login-user-object (get-current-login-user)) 'tenant-id)
-				    :updated-by (slot-value  (get-login-user-object (get-current-login-user)) 'tenant-id)))
-     ;; else redirect to the login page
-    (hunchentoot:redirect "/login"))))
+	(clsql:update-records-from-instance (make-instance 'crm-company
+							   :name company-name
+							   :address company-address
+							   :deleted-state "N"
+							   :created-by (get-login-tenant-id)
+							   :updated-by (get-login-tenant-id)))
+
+	;; else redirect to the login page
+	(hunchentoot:redirect "/login"))))
+
+
+(defun get-login-tenant-id ()
+  (slot-value  (get-login-user-object (get-current-login-username)) 'tenant-id))
+
+
+(defun list-crm-companies ()
+  (clsql:select 'crm-company  :where [= [:deleted-state] "N"]   :caching nil :flatp t ))
+
+(defun delete-crm-company ( id )
+  (let ((company (car (clsql:select 'crm-company :where [= [:row-id] id] :flatp t :caching nil))))
+    (setf (slot-value company 'deleted-state) "Y")
+    (clsql:update-record-from-slot company 'deleted-state)))
+    
+
+(defun delete-crm-companies ( list )
+  (mapcar (lambda (id)  (let ((company (car (clsql:select 'crm-company :where [= [:row-id] id] :flatp t :caching nil))))
+			  (setf (slot-value company 'deleted-state) "Y")
+			  (clsql:update-record-from-slot company 'deleted-state))) list ))
+
+
+(defun restore-deleted-crm-companies ( list )
+(mapcar (lambda (id)  (let ((company (car (clsql:select 'crm-company :where [= [:row-id] id] :flatp t :caching nil))))
+    (setf (slot-value company 'deleted-state) "N")
+    (clsql:update-record-from-slot company 'deleted-state))) list ))
+
+
+(defun crm-controller-delete-company ()
+(if (is-crm-session-valid?)
+    (let ((id (hunchentoot:parameter "id")) )
+      (delete-crm-company id)
+      (hunchentoot:redirect "/list-companies"))
+     (hunchentoot:redirect "/login")))
+
+
+(defun crm-controller-list-companies ()
+(if (is-crm-session-valid?)
+   (let (( companies (list-crm-companies)))
+    (standard-page (:title "List companies")
+      (:table :cellpadding "0" :cellspacing "0" :border "1"
+     (loop for company in companies
+       do (htm (:tr (:td :colspan "3" :height "12px" (str (slot-value company 'name)))
+		    (:td :colspan "12px" (:a :href  (format nil  "/delcomp?id=~A" (slot-value company 'row-id)) "Delete"))
+		    
+		    ))))))
+ (hunchentoot:redirect "/login")))
+
+
