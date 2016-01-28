@@ -71,7 +71,7 @@
 
 
 
-(defun new-crm-user(name uname passwd email-address )
+(defun new-crm-user(name uname passwd email-address tenant-id )
  (if ( is-crm-session-valid?)
 	;; if session is valid then go ahead and create the company
     (clsql:update-records-from-instance (make-instance 'crm-users
@@ -79,7 +79,7 @@
 				    :username uname
 				    :password passwd
 				    :email email-address
-				    :tenant-id (get-login-tenant-id)
+				    :tenant-id tenant-id
 				    :created-by (get-login-tenant-id)
 				    :updated-by (get-login-tenant-id)))
      ;; else redirect to the login page

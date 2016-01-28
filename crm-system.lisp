@@ -27,35 +27,50 @@
 	    (:head 
 	     (:meta :http-equiv "Content-Type" 
 		    :content    "text/html;charset=utf-8")
-	     (:title ,title)
+	     (:title ,title )
 	     (:link :type "text/css" 
 		    :rel "stylesheet"
 		    :href "./resources/crm-system.css"))
 	    (:body :align "center"
-	     (:div :id "header"		; CRM System header
-		   (:img :src "./resources/crm-logo.png" 
-			 :alt "CRM" 
-			 :class "logo")
-		    (:h3 (:span :class "strapline"  "Welcome  " (str (get-current-login-user))
-				)))
-	     (:p (:hr))
+		   (:div :id "header"	:align "left" ; CRM System header
+			 (:h5 (:span :class "strapline"  "Company :  " (str (get-current-login-company))))
+			 (:h5(:span :class "strapline"  "Welcome  " (str (get-current-login-username))))
+			 (:img :src "./resources/crm-logo.png" 
+			       :alt "CRM" 
+			       :class "logo")
+			 (:div :id "home" :align "left"
+			       (:a :href "/crmindex" " Home "))
+			(:div :id "logout" :align "right"
+                            (:a :align "right"  :href "/crmlogout" " Logout" )))
+		   
+
+		   (:p (:hr))
 					 
-	     ,@body))))
+		   ,@body))))
 
 
 
 (defun verify-superadmin ();;"Verifies whether username is superadmin" 
   (if (equal (get-current-login-username) "superadmin") T NIL ))
 
+(defun superadmin-login (company-id)
+(if (verify-superadmin )
+  (setf ( hunchentoot:session-value :login-company)   (get-tenant-name company-id))))
+
+	    
+
+  
+
 
 (defun crm-controller-index () 
   (if (is-crm-session-valid?)
       (standard-page (:title "Welcome to CRM World")
-	(:p "List companies?" (:a :href "/list-companies" "here"))
-	(when (verify-superadmin)(htm (:p "Want to create a new company?" (:a :href "/new-company" "here"))))
+
+	(when (verify-superadmin)(htm (:p "Want to create a new company?" (:a :href "/new-company" "here"))
+				      	(:p "List companies?" (:a :href "/list-companies" "here"))))
+
 	(:p "Want to create a new user?" (:a :href "/new-user" "here"))
-	(:p "Want to create a new account?" (:a :href "/new-account" "here"))
-	(:a :href "/crmlogout" "Logout"))
+	(:p "Want to create a new account?" (:a :href "/new-account" "here")))
       (hunchentoot:redirect "/login")))
 (setq *logged-in-users* (make-hash-table :test 'equal))
 
@@ -86,18 +101,17 @@
 	 (passwd (hunchentoot:parameter "password"))
 	 (cname (hunchentoot:parameter "company")))
     
-    (unless(and
+      (unless(and
 	    ( or (null cname) (zerop (length cname)))
 	    ( or (null uname) (zerop (length uname)))
 	    ( or (null passwd) (zerop (length passwd))))
       (if (equal (crm-login :company-name cname :username uname :password passwd) NIL) (hunchentoot:redirect "/login") (hunchentoot:redirect  "/crmindex")))))
-
+   
   
    (defun crm-controller-logout ()
-     (if (is-crm-session-valid?)
-     (progn (crm-logout (get-current-login-user))
+     (progn (crm-logout (get-current-login-username))
 	    (hunchentoot:remove-session *current-user-session*)
-	    (hunchentoot:redirect "/login"))))
+	    (hunchentoot:redirect "/login")))
 
 
 (defun get-current-login-username ()
@@ -123,11 +137,19 @@
 				      (setf (hunchentoot:session-value :login-company) company-name)))))
 
 
+  
+  
+
+
 (defun get-tenant-id (company-name)
   ( car ( clsql:select [row-id] :from [crm-company] :where [= [slot-value 'crm-company 'name] company-name]
 		       :flatp t)))
 
-      
+(defun get-tenant-name (company-id)
+  ( car ( clsql:select [name] :from [crm-company] :where [= [slot-value 'crm-company 'row-id] company-id]
+		       :flatp t)))
+  
+
 (defun get-login-user-object (username)
   (gethash username *logged-in-users*))
 
@@ -159,7 +181,22 @@
 				       :name "address" 
 				       :class "txtarea"))
 
-				   
+	       (:h3 "Create the Admin user")
+	       (:p "Name: "
+		   (:input :type "text"  
+			   :name "name" 
+			   :class "txt")
+		   (:p "Username: " (:input :type "text"  
+					    :name "username" 
+					    :class "txt"))
+		   (:p "Password: " (:input :type "password"  
+					    :name "password" 
+					    :class "password"))
+		   (:p "Email: " (:input :type "text"  
+					 :name "email" 
+					 :class "txt")))
+
+					   
 	       (:p (:input :type "submit" 
 			   :value "Add" 
 			   :class "btn"))))
@@ -205,7 +242,7 @@
 		      ( or (null username) (zerop (length username)))
 		      ( or (null password) (zerop (length password)))
 		      ( or (null email) (zerop (length email))))		
-	  (new-crm-user name username password email))
+	  (new-crm-user name username password email (get-login-tenant-id)))
 	(hunchentoot:redirect  "/crmindex"))
       (hunchentoot:redirect "/login")))
 
@@ -214,11 +251,23 @@
 (defun crm-controller-company-added ()
   (if (is-crm-session-valid?)
       (let  ((cname (hunchentoot:parameter "name"))
-	     (caddress (hunchentoot:parameter "address")))
+	     (caddress (hunchentoot:parameter "address"))
+	     (name (hunchentoot:parameter "name"))
+	     (username (hunchentoot:parameter "username"))
+	     (password (hunchentoot:parameter "password"))
+	     (email (hunchentoot:parameter "email")))
     
 	(unless(and  ( or (null cname) (zerop (length cname)))
-		     ( or (null caddress) (zerop (length caddress))))
+		     ( or (null caddress) (zerop (length caddress)))
+		     ( or (null name) (zerop (length name)))
+ 		      ( or (null username) (zerop (length username)))
+		      ( or (null password) (zerop (length password)))
+		      ( or (null email) (zerop (length email))))
 	  (new-crm-company cname caddress))
+	;; By this time the new company is created.
+	(let ((company (car (clsql:select 'crm-company :where [= [:name] cname] :caching nil :flatp t))))
+	  (new-crm-user name username password email (slot-value company 'row-id)))
+	  
 	(hunchentoot:redirect  "/crmindex"))
       (hunchentoot:redirect "/login")))
 
@@ -233,6 +282,7 @@
        (hunchentoot:create-regex-dispatcher "^/new-user" 'crm-controller-new-user)
        (hunchentoot:create-regex-dispatcher "^/user-added" 'crm-controller-user-added)
        (hunchentoot:create-regex-dispatcher "^/crmlogout" 'crm-controller-logout)
+       (hunchentoot:create-regex-dispatcher "^/delcomp" 'crm-controller-delete-company)
        (hunchentoot:create-regex-dispatcher "^/list-companies" 'crm-controller-list-companies)))
 
 
