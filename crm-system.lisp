@@ -70,6 +70,7 @@
 				      	(:p "List companies?" (:a :href "/list-companies" "here"))))
 
 	(:p "Want to create a new user?" (:a :href "/new-user" "here"))
+	(:p "List Accounts" (:a :href "/list-accounts" "here"))
 	(:p "Want to create a new account?" (:a :href "/new-account" "here")))
       (hunchentoot:redirect "/login")))
 (setq *logged-in-users* (make-hash-table :test 'equal))
@@ -283,6 +284,11 @@
        (hunchentoot:create-regex-dispatcher "^/user-added" 'crm-controller-user-added)
        (hunchentoot:create-regex-dispatcher "^/crmlogout" 'crm-controller-logout)
        (hunchentoot:create-regex-dispatcher "^/delcomp" 'crm-controller-delete-company)
+       ;; Accounts
+        (hunchentoot:create-regex-dispatcher "^/account-added" 'crm-controller-account-added)
+       (hunchentoot:create-regex-dispatcher "^/new-account" 'crm-controller-new-account)
+       (hunchentoot:create-regex-dispatcher "^/delaccount" 'crm-controller-delete-account)
+       (hunchentoot:create-regex-dispatcher "^/list-accounts" 'crm-controller-list-accounts)
        (hunchentoot:create-regex-dispatcher "^/list-companies" 'crm-controller-list-companies)))
 
 

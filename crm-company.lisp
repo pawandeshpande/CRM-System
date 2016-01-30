@@ -50,17 +50,12 @@
 
 (defun new-crm-company(cname caddress)
   (let  ((company-name cname)(company-address caddress))
-    (if ( is-crm-session-valid?)
-	;; if session is valid then go ahead and create the company
 	(clsql:update-records-from-instance (make-instance 'crm-company
 							   :name company-name
 							   :address company-address
 							   :deleted-state "N"
 							   :created-by (get-login-tenant-id)
-							   :updated-by (get-login-tenant-id)))
-
-	;; else redirect to the login page
-	(hunchentoot:redirect "/login"))))
+							   :updated-by (get-login-tenant-id)))))
 
 
 (defun get-login-tenant-id ()
