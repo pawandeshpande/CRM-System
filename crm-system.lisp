@@ -69,10 +69,14 @@
 	(when (verify-superadmin)(htm (:p "Want to create a new company?" (:a :href "/new-company" "here"))
 				      	(:p "List companies?" (:a :href "/list-companies" "here"))))
 
+	(unless (verify-superadmin)
+	  (htm 
 	(:p "Want to create a new user?" (:a :href "/new-user" "here"))
+	(:p "List Users" (:a :href "/list-users" "here"))
 	(:p "List Accounts" (:a :href "/list-accounts" "here"))
-	(:p "Want to create a new account?" (:a :href "/new-account" "here")))
-      (hunchentoot:redirect "/login")))
+	(:p "Want to create a new account?" (:a :href "/new-account" "here")))))
+	(hunchentoot:redirect "/login")))
+  
 (setq *logged-in-users* (make-hash-table :test 'equal))
 
 
@@ -281,6 +285,7 @@
        (hunchentoot:create-regex-dispatcher "^/login" 'crm-controller-loginpage)
        (hunchentoot:create-regex-dispatcher "^/crmlogin" 'crm-controller-login)
        (hunchentoot:create-regex-dispatcher "^/new-user" 'crm-controller-new-user)
+       (hunchentoot:create-regex-dispatcher "^/deluser" 'crm-controller-delete-user)
        (hunchentoot:create-regex-dispatcher "^/user-added" 'crm-controller-user-added)
        (hunchentoot:create-regex-dispatcher "^/crmlogout" 'crm-controller-logout)
        (hunchentoot:create-regex-dispatcher "^/delcomp" 'crm-controller-delete-company)
@@ -288,6 +293,7 @@
         (hunchentoot:create-regex-dispatcher "^/account-added" 'crm-controller-account-added)
        (hunchentoot:create-regex-dispatcher "^/new-account" 'crm-controller-new-account)
        (hunchentoot:create-regex-dispatcher "^/delaccount" 'crm-controller-delete-account)
+       (hunchentoot:create-regex-dispatcher "^/list-users" 'crm-controller-list-users)
        (hunchentoot:create-regex-dispatcher "^/list-accounts" 'crm-controller-list-accounts)
        (hunchentoot:create-regex-dispatcher "^/list-companies" 'crm-controller-list-companies)))
 

@@ -8,10 +8,10 @@
     :type integer
     :initarg :row-id)
   ; not using currently
-  ; (account-no
-  ;  :type (string 10)
+;   (account-no
+ ;   :type (string 10)
   ;  :db-constraints :not-null
-  ;  :initarg :account-no)
+   ; :initarg :account-no)
    (name
     :type (string 30)
     :db-constraints :not-null
@@ -73,6 +73,7 @@
   (:base-table crm_account))
 
 
+
 (clsql:def-view-class crm-account-type ()
   ((row-id
     :db-kind :key
@@ -91,17 +92,20 @@
 
 
 
+
 (defun new-crm-account(name description acct-type tenant-id )
     (clsql:update-records-from-instance (make-instance 'crm-account
 				    :name name
 				    :description description
 				    :account-type acct-type
+				    :deleted-state "N"
+				    
 				    :tenant-id tenant-id
 				    :created-by (get-login-tenant-id)
 				    :updated-by (get-login-tenant-id))))
 
 (defun list-crm-accounts ()
-  (clsql:select 'crm-account  :where [= [:deleted-state] "N"]   :caching nil :flatp t ))
+  (clsql:select 'crm-account  :where [and [= [:deleted-state] "N"] [= [:tenant-id] (get-login-tenant-id)]]   :caching nil :flatp t ))
 
 (defun delete-crm-account ( id )
   (let ((account (car (clsql:select 'crm-account :where [= [:row-id] id] :flatp t :caching nil))))
@@ -134,12 +138,14 @@
    (let (( accounts (list-crm-accounts)))
     (standard-page (:title "List Accounts")
       (:table :cellpadding "0" :cellspacing "0" :border "1"
-     (loop for account in accounts
+      (if (= (list-length accounts) 0) (htm (:tr (:td :colspan "3" :height "12px" (:p "No Accounts Found"))))
+      (loop for account in accounts
        do (htm (:tr (:td :colspan "3" :height "12px" (str (slot-value account 'name)))
 		    (:td :colspan "12px" (:a :href  (format nil  "/delaccount?id=~A" (slot-value account 'row-id)) "Delete"))
-		    
-		    ))))))
+(:td :colspan "12px" (str (nth (decf (slot-value account 'account-type)) *crm-account-types*))))))))))
    (hunchentoot:redirect "/login")))
+
+ 
 
 (defparameter *crm-account-types* (clsql:select [:name] :from 'crm-account-type :caching nil :flatp t))
 
@@ -157,11 +163,11 @@
 	(:h1 "Add a new Account")
 	(:form :action "/account-added" :method "post" 
 	       (:p "Name: "
-		   (:input :type "text"  
+		   (:input :type "text"  :maxlength 30
 			   :name "name" 
 			   :class "txt")
-		   (:p "Description: " (:input :type "text"  
-					    :name "username" 
+		   (:p "Description: " (:textarea :rows 4 :cols 50  :maxlength 255   
+					    :name "description" 
 					    :class "txt"))
 		   (:p "Account Type: " (account-type-dropdown))
 		   
