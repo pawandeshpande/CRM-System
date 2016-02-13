@@ -59,8 +59,7 @@
 
 
 (defun get-login-tenant-id ()
-  (slot-value  (get-login-user-object (get-current-login-username)) 'tenant-id))
-
+  (hunchentoot:session-value :login-tenant-id))
 
 (defun list-crm-companies ()
   (clsql:select 'crm-company  :where [= [:deleted-state] "N"]   :caching nil :flatp t ))

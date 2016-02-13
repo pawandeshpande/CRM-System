@@ -19,6 +19,17 @@
        do (setf (gethash key ht) value)
        finally (return ht))))
 
+
+(defmacro navigation-bar ()
+  `(cl-who:with-html-output (*standard-output* nil)
+     (:div :class "navbar navbar-default navbar-inverse navbar-fixed-top"  
+	   (:ul :class "nav navbar-nav"
+		      (:li :class "active" (:a :href "/crmindex" "Home"))
+		      (:li  (:a :href "/crmlogout" "Logout"))))))
+
+		 
+		 
+
 (defmacro standard-page ((&key title) &body body)
   `(cl-who:with-html-output-to-string (*standard-output* nil :prologue t :indent t)
      (:html :xmlns "http://www.w3.org/1999/xhtml"
@@ -27,26 +38,37 @@
 	    (:head 
 	     (:meta :http-equiv "Content-Type" 
 		    :content    "text/html;charset=utf-8")
+	     (:meta :name "viewport" :content "width=device-width, initial-scale=1")
+	     (:meta :name "description" :content "")
+	     (:meta :name "author" :content "")
+	     (:link :rel "icon" :href "favicon.ico")
 	     (:title ,title )
-	     (:link :type "text/css" 
-		    :rel "stylesheet"
-		    :href "./resources/crm-system.css"))
-	    (:body :align "center"
-		   (:div :id "header"	:align "left" ; CRM System header
-			 (:h5 (:span :class "strapline"  "Company :  " (str (get-current-login-company))))
-			 (:h5(:span :class "strapline"  "Welcome  " (str (get-current-login-username))))
-			 (:img :src "./resources/crm-logo.png" 
-			       :alt "CRM" 
-			       :class "logo")
-			 (:div :id "home" :align "left"
-			       (:a :href "/crmindex" " Home "))
-			(:div :id "logout" :align "right"
-                            (:a :align "right"  :href "/crmlogout" " Logout" )))
+	  
+	     (:link :href "css/style.css" :rel "stylesheet")
+	     (:link :href "css/bootstrap.min.css" :rel "stylesheet")
+	     (:link :href "css/bootstrap-theme.min.css" :rel "stylesheet")
+	     
+	     );; Header completes here.
+	    (:body 
+		   (navigation-bar)
+		   (:div :class "container theme-showcase" :role "main" 
+
+			 (:div :id "header"	 ; CRM System header
+			      
+	 
+			       (:table :class "table" 
+				       (:tr (:th "Tenant") (:th "Company") (:th "User"))
+				       (:tr (:td  :height "12px" (str (get-login-tenant-id)))
+					    (:td  :height "12px" (str (get-current-login-company)))
+					    (:td  :height "12px" (str (get-current-login-username)))))
 		   
 
-		   (:p (:hr))
-					 
-		   ,@body))))
+			    					 
+			       ,@body))	;container div close
+		   ;; bootstrap core javascript
+		   (:script :src "https://ajax.googleapis.com/ajax/libs/jquery/1.11.3/jquery.min.js")
+	
+		   (:script :src "js/bootstrap.min.js")))))
 
 
 
@@ -74,7 +96,10 @@
 	(:p "Want to create a new user?" (:a :href "/new-user" "here"))
 	(:p "List Users" (:a :href "/list-users" "here"))
 	(:p "List Accounts" (:a :href "/list-accounts" "here"))
-	(:p "Want to create a new account?" (:a :href "/new-account" "here")))))
+	(:p "Want to create a new account?" (:a :href "/new-account" "here"))
+	(:p "List Journal Entries" (:a :href "/list-journal-entries" "here"))
+	(:p "Want to create a new Journal Entry?" (:a :href "/new-journal-entry" "here"))
+	)))
 	(hunchentoot:redirect "/login")))
   
 (setq *logged-in-users* (make-hash-table :test 'equal))
@@ -82,23 +107,18 @@
 
 (defun crm-controller-loginpage ()
   (standard-page (:title "Welcome to CRM System")
-    (:h1 "Login to CRM System")
-    (:form :action "/crmlogin" :method "post" 
-	   (:p "Company" (:br)
-	       (:input :type "text"  
-		       :name "company" 
-		       :class "txt"))
-	   (:p "Username" (:br)
-	       (:input :type "text"  
-		       :name "username" 
-		       :class "txt"))
-	   (:p "Password" (:br)
-	       (:input :type "password"  
-		       :name "password" 
-		       :class "password"))
-	   (:p (:input :type "submit" 
-		       :value "Login" 
-		       :class "btn")))))
+    (:div :class "row background-image: url(resources/login-background.png);background-color:lightblue;" 
+	  (:div :class "col-sm-6 col-md-4 col-md-offset-4"
+		(:div :class "account-wall"
+		      (:h1 :class "text-center login-title"  "Login to CRM System")
+		      (:form :class "form-signin" :role "form" :method "POST" :action "/crmlogin"
+			     (:div :class "form-group"
+				   (:input :class "form-control" :name "company" :placeholder "Company Name"  :type "text"))
+			     (:div :class "form-group"
+				   (:input :class "form-control" :name "username" :placeholder "User name" :type "text"))
+			     (:div :class "form-group"
+				   (:input :class "form-control" :name "password"  :placeholder "Password" :type "password"))
+			     (:input :type "submit"  :class "btn btn-primary" :value "Login      ")))))))
 
 
 (defun crm-controller-login ()
@@ -139,6 +159,7 @@
     (if (null login-user) NIL  (progn (add-login-user username  login-user)
 				      (setf *current-user-session* (hunchentoot:start-session))
 				      (setf (hunchentoot:session-value :login-username) username)
+				      (setf (hunchentoot:session-value :login-tenant-id) (get-tenant-id company-name))
 				      (setf (hunchentoot:session-value :login-company) company-name)))))
 
 
@@ -289,10 +310,13 @@
        (hunchentoot:create-regex-dispatcher "^/user-added" 'crm-controller-user-added)
        (hunchentoot:create-regex-dispatcher "^/crmlogout" 'crm-controller-logout)
        (hunchentoot:create-regex-dispatcher "^/delcomp" 'crm-controller-delete-company)
-       ;; Accounts
+ (hunchentoot:create-regex-dispatcher "^/journal-entry-added" 'crm-controller-journal-entry-added)
         (hunchentoot:create-regex-dispatcher "^/account-added" 'crm-controller-account-added)
        (hunchentoot:create-regex-dispatcher "^/new-account" 'crm-controller-new-account)
        (hunchentoot:create-regex-dispatcher "^/delaccount" 'crm-controller-delete-account)
+              (hunchentoot:create-regex-dispatcher "^/deljournal-entry" 'crm-controller-delete-journal-entry)
+       (hunchentoot:create-regex-dispatcher "^/list-journal-entries" 'crm-controller-list-journal-entries)
+        (hunchentoot:create-regex-dispatcher "^/new-journal-entry" 'crm-controller-new-journal-entry)
        (hunchentoot:create-regex-dispatcher "^/list-users" 'crm-controller-list-users)
        (hunchentoot:create-regex-dispatcher "^/list-accounts" 'crm-controller-list-accounts)
        (hunchentoot:create-regex-dispatcher "^/list-companies" 'crm-controller-list-companies)))

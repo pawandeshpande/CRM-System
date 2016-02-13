@@ -1,4 +1,5 @@
 (in-package :crm-system)
+(clsql:file-enable-sql-reader-syntax)
 (clsql:def-view-class crm-users ()
   ((row-id
     :db-kind :key
@@ -97,11 +98,14 @@
 (defun crm-controller-list-users ()
 (if (is-crm-session-valid?)
    (let (( crmusers (list-crm-users)))
-    (standard-page (:title "List CRM Users")
-      (:table :cellpadding "0" :cellspacing "0" :border "1"
+     (standard-page (:title "List CRM Users")
+       (:h3 "Users")
+
+      (:table :class "table table-striped"  
+	      (:thead (:tr (:th "User Name") (:th "Action")))(:tbody
      (loop for crmuser in crmusers
-       do (htm (:tr (:td :colspan "3" :height "12px" (str (slot-value crmuser 'name)))
-		    (:td :colspan "12px" (:a :href  (format nil  "/deluser?id=~A" (slot-value crmuser 'row-id)) "Delete"))))))))
+       do (htm (:tr (:td  :height "12px" (str (slot-value crmuser 'name)))
+		    (:td :height "12px" (:a :href  (format nil  "/deluser?id=~A" (slot-value crmuser 'row-id)) "Delete")))))))))
    (hunchentoot:redirect "/login")))
 
 (defun list-crm-users ()

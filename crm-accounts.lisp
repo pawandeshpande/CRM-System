@@ -104,8 +104,12 @@
 				    :created-by (get-login-tenant-id)
 				    :updated-by (get-login-tenant-id))))
 
-(defun list-crm-accounts ()
+(defun list-current-login-crm-accounts ()
   (clsql:select 'crm-account  :where [and [= [:deleted-state] "N"] [= [:tenant-id] (get-login-tenant-id)]]   :caching nil :flatp t ))
+
+(defun list-crm-accounts ( company-id)
+  (clsql:select 'crm-account  :where [and [= [:deleted-state] "N"] [= [:tenant-id] company-id]]   :caching nil :flatp t ))
+
 
 (defun delete-crm-account ( id )
   (let ((account (car (clsql:select 'crm-account :where [= [:row-id] id] :flatp t :caching nil))))
@@ -135,19 +139,21 @@
 
 (defun crm-controller-list-accounts ()
 (if (is-crm-session-valid?)
-   (let (( accounts (list-crm-accounts)))
-    (standard-page (:title "List Accounts")
-      (:table :cellpadding "0" :cellspacing "0" :border "1"
-      (if (= (list-length accounts) 0) (htm (:tr (:td :colspan "3" :height "12px" (:p "No Accounts Found"))))
+   (let (( accounts (list-current-login-crm-accounts)))
+     (standard-page (:title "List Accounts")
+       (:h3 "Accounts")
+
+       
+      (:table :class "table table-striped" 
+	      (:tr (:th "Account name") (:th "Account Type") (:th "Action"))
+      (if (= (list-length accounts) 0) (htm (:tr (:td  :height "12px" (:p "No Accounts Found"))))
       (loop for account in accounts
-       do (htm (:tr (:td :colspan "3" :height "12px" (str (slot-value account 'name)))
-		    (:td :colspan "12px" (:a :href  (format nil  "/delaccount?id=~A" (slot-value account 'row-id)) "Delete"))
-(:td :colspan "12px" (str (nth (decf (slot-value account 'account-type)) *crm-account-types*))))))))))
-   (hunchentoot:redirect "/login")))
+       do (htm (:tr (:td  :height "12px" (str (slot-value account 'name)))
+		    (:td :height "12px" (str (nth (decf (slot-value account 'account-type)) *crm-account-types*)))
+		    (:td :colspan "12px" (:a :href  (format nil  "/delaccount?id=~A" (slot-value account 'row-id)) "Delete")))))))))
+    (hunchentoot:redirect "/login")))
 
  
-
-(defparameter *crm-account-types* (clsql:select [:name] :from 'crm-account-type :caching nil :flatp t))
 
 (defmacro account-type-dropdown ()
   `(cl-who:with-html-output (*standard-output* nil)
@@ -161,6 +167,8 @@
   (if (is-crm-session-valid?)
       (standard-page (:title "Add a new Account")
 	(:h1 "Add a new Account")
+	(:div :id "row"
+	(:div :id "col-md-4"      
 	(:form :action "/account-added" :method "post" 
 	       (:p "Name: "
 		   (:input :type "text"  :maxlength 30
@@ -174,7 +182,7 @@
 		   ;; Add a drop down list of available roles for the user.
 		   (:p (:input :type "submit" 
 			       :value "Add" 
-			       :class "btn")))))
+			       :class "btn")))))))
       (hunchentoot:redirect "/login")))
 
 
