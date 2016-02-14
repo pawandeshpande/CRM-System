@@ -94,7 +94,7 @@
 
 
 (defun new-crm-account(name description acct-type tenant-id )
-    (clsql:update-records-from-instance (make-instance 'crm-account
+(let ((account-instance (make-instance 'crm-account
 				    :name name
 				    :description description
 				    :account-type acct-type
@@ -103,6 +103,8 @@
 				    :tenant-id tenant-id
 				    :created-by (get-login-tenant-id)
 				    :updated-by (get-login-tenant-id))))
+  
+  (clsql:update-records-from-instance account-instance)))
 
 (defun list-current-login-crm-accounts ()
   (clsql:select 'crm-account  :where [and [= [:deleted-state] "N"] [= [:tenant-id] (get-login-tenant-id)]]   :caching nil :flatp t ))
@@ -168,9 +170,10 @@
       (standard-page (:title "Add a new Account")
 	(:h1 "Add a new Account")
 	(:div :id "row"
-	(:div :id "col-md-4"      
+	      
 	(:form :action "/account-added" :method "post" 
 	       (:p "Name: "
+(:div :id "col-md-4"
 		   (:input :type "text"  :maxlength 30
 			   :name "name" 
 			   :class "txt")
