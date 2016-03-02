@@ -55,10 +55,10 @@ Database type: Supported type is ':odbc'"
 (setf (hunchentoot:acceptor-message-log-destination *http-server*) #p"~/hunchentoot-messages.log")
 (crm-db-connect :strdb "TestCRMCore" :strusr "TestCRMCore" :strpwd "TestCRMCore" :strdbtype :odbc)
 
-(make-instance 'crm-business-component
-		 :name "Account"
-		 :persistance-class (type-of 'crm-account)
-		 :can-delete? t)
+;(defparameter *ACCOUNT-BC* (make-instance 'crm-business-component
+;		 :name "Account"
+;		 :persistance-class (type-of 'crm-account)
+;		 :can-delete? t))
 (defparameter *crm-account-types* (clsql:select [:name] :from 'crm-account-type :caching nil :flatp t)))
 
 (defun shutdown-crm-system ()

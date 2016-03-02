@@ -69,7 +69,11 @@
    (deleted-state
     :type (string 1)
     :void-value "N"
-    :initarg :deleted-state))
+    :initarg :deleted-state)
+   (pawan
+    :type (string 30)
+    :initarg :pawan
+    :db-kind :virtual)  )
   (:base-table crm_account))
 
 

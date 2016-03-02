@@ -28,11 +28,7 @@
 		      (:li  (:a :href "/crmlogout" "Logout"))))))
 
 		 
-(defmacro standard-page-handler ( &rest body)
-  (if (is-crm-session-valid?)
-      `(,@body)
-      (hunchentoot:redirect "/login")))
-
+		 
 
 (defmacro standard-page ((&key title) &body body)
   `(cl-who:with-html-output-to-string (*standard-output* nil :prologue t :indent t)
@@ -73,7 +69,6 @@
 		   (:script :src "https://ajax.googleapis.com/ajax/libs/jquery/1.11.3/jquery.min.js")
 	
 		   (:script :src "js/bootstrap.min.js")))))
-
 
 
 
@@ -275,7 +270,6 @@
         (hunchentoot:create-regex-dispatcher "^/new-journal-entry" 'crm-controller-new-journal-entry)
        (hunchentoot:create-regex-dispatcher "^/list-users" 'crm-controller-list-users)
        (hunchentoot:create-regex-dispatcher "^/list-accounts" 'crm-controller-list-accounts)
-       
        (hunchentoot:create-regex-dispatcher "^/list-companies" 'crm-controller-list-companies)))
 
 
