@@ -1,3 +1,4 @@
+
 ;;; -*- Mode: LISP; Syntax: COMMON-LISP; Package: CL-USER; Base: 10 -*-
 ;;; $Header: crm-system.asd,v 1.6 2016/01/26 18:31:03 
 
@@ -36,8 +37,15 @@
                #:cl-who
 	       #:clsql)
   :components ((:file "packages")
-               (:file "crm-system")
-	       (:file "crm-users")
-	       (:file "crm-company")
-	       (:file "crm-accounts")
-	       (:file "crm-system-init")))
+               (:file "crm-ui-sys")
+	       (:file "crm-ui-usr")
+	       (:file "crm-bl-usr")
+	       (:file "crm-dal-usr")
+	       (:file "crm-bl-act")
+	       (:file "crm-dal-act")
+	       (:file "crm-ui-act")
+	       (:file "crm-ui-cmp")
+	       (:file "crm-dal-cmp")
+	       (:file "crm-bl-cmp")
+	       (:file "crm-ini-sys")))
+
