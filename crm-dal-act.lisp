@@ -8,15 +8,15 @@
     :type integer
     :initarg :row-id)
   ; not using currently
-  ; (account-no
-  ;  :type (string 10)
+;   (account-no
+ ;   :type (string 10)
   ;  :db-constraints :not-null
-  ;  :initarg :account-no)
-   (account-name
+   ; :initarg :account-no)
+   (name
     :type (string 30)
     :db-constraints :not-null
     :initarg :name)
-   (account-description
+   (description
     :type (string 100)
     :initarg :description)
 
@@ -69,8 +69,13 @@
    (deleted-state
     :type (string 1)
     :void-value "N"
-    :initarg :deleted-state))
+    :initarg :deleted-state)
+   (pawan
+    :type (string 30)
+    :initarg :pawan
+    :db-kind :virtual)  )
   (:base-table crm_account))
+
 
 
 (clsql:def-view-class crm-account-type ()
@@ -86,21 +91,6 @@
     (description
     :type (string 255)
     :initarg :description))
-(:base-table crm_account-type))
+(:base-table crm_account_type))
 
 
-
-
-(defun new-crm-account(name uname passwd email-address tenant-id )
- (if ( is-crm-session-valid?)
-	;; if session is valid then go ahead and create the company
-    (clsql:update-records-from-instance (make-instance 'crm-users
-				    :name name
-				    :username uname
-				    :password passwd
-				    :email email-address
-				    :tenant-id tenant-id
-				    :created-by (get-login-tenant-id)
-				    :updated-by (get-login-tenant-id)))
-     ;; else redirect to the login page
-    (hunchentoot:redirect "/login")))

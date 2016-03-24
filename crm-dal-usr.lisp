@@ -1,24 +1,39 @@
 (in-package :crm-system)
 (clsql:file-enable-sql-reader-syntax)
-
-(clsql:def-view-class crm-roles ()
+(clsql:def-view-class crm-users ()
   ((row-id
     :db-kind :key
     :db-constraints :not-null
     :type integer
-    :initarg :row-id)
-   (name
+    :initarg row-id)
+   (NAME
+    :accessor name
+    :DB-CONSTRAINTS :NOT-NULL
+    :TYPE (string 30)
+    :INITARG :name)
+   (username
+    :ACCESSOR username 
     :type (string 30)
-    :initarg :name)
-   (description
+    :initarg :username)
+   (password
+    :accessor password
+    :type (string 30)
+    :initarg :password)
+   (email
+    :accessor email
     :type (string 255)
-    :initarg :address)
+    :initarg :email)
 
- (created-by
+   (deleted-state
+    :type (string 1)
+    :void-value "N"
+    :initarg :deleted-state)
+
+   (created-by
     :TYPE INTEGER
     :INITARG :created-by)
    (user-created-by
-    :ACCESSOR company-created-by
+    :ACCESSOR user-created-by
     :DB-KIND :JOIN
     :DB-INFO (:JOIN-CLASS crm-users
                           :HOME-KEY created-by
@@ -28,51 +43,37 @@
     :TYPE INTEGER
     :INITARG :updated-by)
    (user-updated-by
-    :ACCESSOR company-updated-by
+    :ACCESSOR user-updated-by
     :DB-KIND :JOIN
     :DB-INFO (:JOIN-CLASS crm-users
                           :HOME-KEY updated-by
                           :FOREIGN-KEY row-id
                           :SET NIL))
-  
    (tenant-id
     :type integer
     :initarg :tenant-id)
    (COMPANY
-    :ACCESSOR roles-company
+    :ACCESSOR users-company
     :DB-KIND :JOIN
     :DB-INFO (:JOIN-CLASS crm-company
 	                  :HOME-KEY tenant-id
                           :FOREIGN-KEY row-id
-                          :SET NIL))
+                          :SET T))
 
    
    (parent-id
     :type integer
     :initarg :parent-id)
-   (PARENT
-    :accessor role-parent
+   (manager
+    :accessor users-manager
     :db-kind :join
-    :db-info (:join-class crm_roles
+    :db-info (:join-class crm_users
                           :home-key parent-id
                           :foreign-key row-id
                           :set nil)))
 
-
-   (:base-table crm_roles))
-
-
-(defun clone-crm-roles ()
-  (let (( *company-roles*  (clsql:select 'crm-roles :where [= [slot-value 'crm-roles 'tenant-id] 1]
-					     :flatp t)))
-    (loop for role  in *company-roles*
-       do ( setf (slot-value role 'tenant-id) (get-login-tenant-id))
-	 (clsql:update-records-from-instance role))))
+   
+  (:BASE-TABLE crm_users))
 
 
 
-
-(defun html-select-roles (stream)
-    (cl-who:with-html-output (stream)
-      (:select (:option :value "pawan")
-	       (:option :value "pawan2" :selected "selected" ))))
