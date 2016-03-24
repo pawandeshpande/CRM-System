@@ -134,8 +134,7 @@
 	    (hunchentoot:redirect "/login")))
 
 
-(defun get-current-login-username ()
-  (hunchentoot:session-value :login-username))
+
 
 (defun get-current-login-company ()
  ( hunchentoot:session-value :login-company))
@@ -149,15 +148,17 @@
 				       [= [slot-value 'crm-users 'username] username]
 				       [= [slot-value 'crm-users 'password] password]]
 				       :flatp t)))
+	 (login-userid (slot-value login-user 'row-id))
 	 (login-tenant-id (slot-value (car (users-company login-user)) 'row-id))
 	 (login-company-name (slot-value (car (users-company login-user)) 'name)))
 
-     (when (and( equal  login-company-name company-name)
+    (when (and(equal  login-company-name company-name)
 	      (not (null login-user))
 	      (null (hunchentoot:session-value :login-username)) ;; User should not be logged-in in the first place.
 	      )  (progn (add-login-user username  login-user)
 				      (setf *current-user-session* (hunchentoot:start-session))
 				      (setf (hunchentoot:session-value :login-username) username)
+				      (setf (hunchentoot:session-value :login-userid) login-userid)
 				      (setf (hunchentoot:session-value :login-tenant-id) login-tenant-id)
 				      (setf (hunchentoot:session-value :login-company) company-name)))))
 

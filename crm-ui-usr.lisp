@@ -67,3 +67,10 @@
     (create-crm-user name uname passwd email-address tenant-id)
      ;; else redirect to the login page
     (hunchentoot:redirect "/login")))
+
+
+(defun get-login-userid ()
+     (hunchentoot:session-value :login-userid))
+
+(defun get-current-login-username ()
+  (hunchentoot:session-value :login-username))
